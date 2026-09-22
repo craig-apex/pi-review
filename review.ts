@@ -138,24 +138,25 @@ type ReviewTarget =
 
 // Prompts (adapted from Codex)
 const UNCOMMITTED_PROMPT =
-	"Review the current code changes (staged, unstaged, and untracked files) and provide prioritized findings.";
+	"Review the current code changes with Jujutsu. Run `jj diff` to inspect the working-copy changes (including untracked files). Do not run Git commands directly. Provide prioritized findings.";
 
 const BASE_BRANCH_PROMPT_WITH_MERGE_BASE =
-	"Review the code changes against the base branch '{baseBranch}'. The merge base commit for this comparison is {mergeBaseSha}. Run `git diff {mergeBaseSha}` to inspect the changes relative to {baseBranch}. Provide prioritized, actionable findings.";
+	"Review the code changes against the base branch '{baseBranch}' using Jujutsu. The merge base commit for this comparison is {mergeBaseSha}. Run `jj diff --from {mergeBaseSha}` to inspect the changes relative to {baseBranch}. Do not run Git commands directly. Provide prioritized, actionable findings.";
 
 const BASE_BRANCH_PROMPT_FALLBACK =
-	"Review the code changes against the base branch '{branch}'. Start by finding the merge diff between the current branch and {branch}'s upstream e.g. (`git merge-base HEAD \"$(git rev-parse --abbrev-ref \"{branch}@{upstream}\")\"`), then run `git diff` against that SHA to see what changes we would merge into the {branch} branch. Provide prioritized, actionable findings.";
+	"Review the code changes against the base branch '{branch}' using Jujutsu. Use `jj log` with revsets to find the merge base between the current working-copy revision and {branch}'s upstream, then run `jj diff --from <merge-base>` to see what changes would merge into the {branch} branch. Do not run Git commands directly. Provide prioritized, actionable findings.";
 
 const COMMIT_PROMPT_WITH_TITLE =
-	'Review the code changes introduced by commit {sha} ("{title}"). Provide prioritized, actionable findings.';
+	'Review the code changes introduced by commit {sha} ("{title}") using Jujutsu. Run `jj show {sha}` to inspect the commit. Do not run Git commands directly. Provide prioritized, actionable findings.';
 
-const COMMIT_PROMPT = "Review the code changes introduced by commit {sha}. Provide prioritized, actionable findings.";
+const COMMIT_PROMPT =
+	"Review the code changes introduced by commit {sha} using Jujutsu. Run `jj show {sha}` to inspect the commit. Do not run Git commands directly. Provide prioritized, actionable findings.";
 
 const PULL_REQUEST_PROMPT =
-	'Review pull request #{prNumber} ("{title}") against the base branch \'{baseBranch}\'. The merge base commit for this comparison is {mergeBaseSha}. Run `git diff {mergeBaseSha}` to inspect the changes that would be merged. Provide prioritized, actionable findings.';
+	'Review pull request #{prNumber} ("{title}") against the base branch \'{baseBranch}\' using Jujutsu. The merge base commit for this comparison is {mergeBaseSha}. Run `jj diff --from {mergeBaseSha}` to inspect the changes that would be merged. Do not run Git commands directly. Provide prioritized, actionable findings.';
 
 const PULL_REQUEST_PROMPT_FALLBACK =
-	'Review pull request #{prNumber} ("{title}") against the base branch \'{baseBranch}\'. Start by finding the merge base between the current branch and {baseBranch} (e.g., `git merge-base HEAD {baseBranch}`), then run `git diff` against that SHA to see the changes that would be merged. Provide prioritized, actionable findings.';
+	'Review pull request #{prNumber} ("{title}") against the base branch \'{baseBranch}\' using Jujutsu. Use `jj log` with revsets to find the merge base between the current working-copy revision and {baseBranch}, then run `jj diff --from <merge-base>` to see the changes that would be merged. Do not run Git commands directly. Provide prioritized, actionable findings.';
 
 const FOLDER_REVIEW_PROMPT =
 	"Review the code in the following paths: {paths}. This is a snapshot review (not a diff). Read the files directly in these paths and provide prioritized, actionable findings.";
@@ -166,6 +167,12 @@ const REVIEW_RUBRIC = `# Review Guidelines
 You are acting as a code reviewer for a proposed code change made by another engineer.
 
 Below are default guidelines for determining what to flag. These are not the final word — if you encounter more specific guidelines elsewhere (in a developer message, user message, file, or project review guidelines appended below), those override these general instructions.
+
+## Repository inspection
+
+1. Use Jujutsu commands (\`jj\`) for repository state, history, and diffs.
+2. Do not run Git commands directly, even when the repository uses a Git backend.
+3. Prefer \`jj status\`, \`jj diff\`, \`jj show\`, and \`jj log\`; use Jujutsu revsets to select revisions and find merge bases.
 
 ## Determining what to flag
 
@@ -1440,15 +1447,16 @@ Preserve exact file paths, function names, and error messages where available.`;
 	const REVIEW_FIX_FINDINGS_PROMPT = `Use the latest review summary in this session and implement the review findings now.
 
 Instructions:
-1. Treat the summary's Findings/Fix Queue as a checklist.
-2. Fix in priority order: P0, P1, then P2 (include P3 if quick and safe).
-3. If a finding is invalid/already fixed/not possible right now, briefly explain why and continue.
-4. Treat "Human Reviewer Callouts (Non-Blocking)" as informational only; do not convert them into fix tasks unless there is a separate explicit finding.
-5. Follow fail-fast error handling: do not add local catch/fallback recovery unless this scope is an explicit boundary that can safely translate the failure.
-6. If you add or keep a \`try/catch\`, explain the expected failure mode and either rethrow with context or return a boundary-safe error response.
-7. JSON parsing/decoding should fail loudly by default; avoid silent fallback parsing.
-8. Run relevant tests/checks for touched code where practical.
-9. End with: fixed items, deferred/skipped items (with reasons), and verification results.`;
+1. Use Jujutsu commands (\`jj\`) for repository state, history, and diffs; do not run Git commands directly.
+2. Treat the summary's Findings/Fix Queue as a checklist.
+3. Fix in priority order: P0, P1, then P2 (include P3 if quick and safe).
+4. If a finding is invalid/already fixed/not possible right now, briefly explain why and continue.
+5. Treat "Human Reviewer Callouts (Non-Blocking)" as informational only; do not convert them into fix tasks unless there is a separate explicit finding.
+6. Follow fail-fast error handling: do not add local catch/fallback recovery unless this scope is an explicit boundary that can safely translate the failure.
+7. If you add or keep a \`try/catch\`, explain the expected failure mode and either rethrow with context or return a boundary-safe error response.
+8. JSON parsing/decoding should fail loudly by default; avoid silent fallback parsing.
+9. Run relevant tests/checks for touched code where practical.
+10. End with: fixed items, deferred/skipped items (with reasons), and verification results.`;
 
 	type EndReviewAction = "returnOnly" | "returnAndFix" | "returnAndSummarize";
 	type EndReviewActionResult = "ok" | "cancelled" | "error";
