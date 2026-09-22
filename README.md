@@ -3,10 +3,12 @@
 `pi-review` adds a practical code review workflow to Pi via `/review` and `/end-review`
 that is used by us at Earendil.
 
+### Forked from earendil-works/pi-review
+
 ## Install
 
 ```bash
-pi install git:github.com/earendil-works/pi-review
+pi install git:github.com/craig-apex/pi-review
 ```
 
 ## What It Does
